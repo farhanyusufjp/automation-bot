@@ -201,6 +201,111 @@ async function press_key(page, selector, key) {
   }
 }
 
+/**
+ * Mengklik elemen berdasarkan teks yang terlihat di halaman
+ * Mencoba berbagai selector sebelum menyerah
+ * @param {object} page - Playwright page object
+ * @param {string} text - Teks tombol/link yang akan diklik
+ */
+async function click_text(page, text) {
+  const selectors = [
+    `text="${text}"`,
+    `button:has-text("${text}")`,
+    `a:has-text("${text}")`,
+    `span:has-text("${text}")`,
+    `[role="button"]:has-text("${text}")`,
+  ];
+  for (const sel of selectors) {
+    try {
+      const el = page.locator(sel).first();
+      if (await el.isVisible({ timeout: 3000 })) {
+        await el.click();
+        return { success: true, message: `Clicked element with text "${text}" using ${sel}` };
+      }
+    } catch (_) {
+      // try next selector
+    }
+  }
+  return { success: false, message: `Element with text "${text}" not found` };
+}
+
+/**
+ * Memastikan setidaknya satu dari beberapa selector terlihat di halaman
+ * @param {object} page - Playwright page object
+ * @param {string} selectorList - Satu atau beberapa selector dipisah koma
+ * @param {string} description - Keterangan untuk pesan hasil
+ */
+async function assert_element_visible(page, selectorList, description) {
+  const selectors = selectorList.split(',').map((s) => s.trim()).filter(Boolean);
+  const fallbacks = ['.alert', '.error', '.validation-message', '.toast', '.notification'];
+  const all = [...selectors, ...fallbacks];
+  for (const sel of all) {
+    try {
+      const visible = await page.isVisible(sel, { timeout: 3000 });
+      if (visible) {
+        return { success: true, message: `Element visible: ${sel}${description ? ' (' + description + ')' : ''}` };
+      }
+    } catch (_) {
+      // try next
+    }
+  }
+  return {
+    success: false,
+    message: `Element not found: ${selectorList}${description ? ' (' + description + ')' : ''}`,
+  };
+}
+
+/**
+ * Memastikan tabel atau list berisi setidaknya satu baris data
+ * @param {object} page - Playwright page object
+ */
+async function assert_table_has_data(page) {
+  const selectors = ['table tbody tr', '.data-list > *', '.list-item', '[class*="table"] tr'];
+  for (const sel of selectors) {
+    try {
+      const count = await page.locator(sel).count();
+      if (count > 0) {
+        return { success: true, message: `Table/list has data (${count} rows/items via "${sel}")` };
+      }
+    } catch (_) {
+      // try next
+    }
+  }
+  return { success: false, message: 'Table/list has no data or not found' };
+}
+
+/**
+ * Menunggu halaman selesai load (networkidle)
+ * @param {object} page - Playwright page object
+ */
+async function wait_for_page_load(page) {
+  try {
+    await page.waitForLoadState('networkidle', { timeout: 30000 });
+    return { success: true, message: 'Page loaded (networkidle)' };
+  } catch (err) {
+    return { success: false, message: err.message };
+  }
+}
+
+/**
+ * Otomatis screenshot ketika step gagal
+ * @param {object} page - Playwright page object
+ * @param {string} testNo - Nomor test case untuk nama file
+ */
+async function take_screenshot_on_fail(page, testNo) {
+  try {
+    const screenshotsDir = path.resolve('screenshots');
+    if (!fs.existsSync(screenshotsDir)) {
+      fs.mkdirSync(screenshotsDir, { recursive: true });
+    }
+    const filePath = path.join(screenshotsDir, `${testNo}-fail.png`);
+    await page.screenshot({ path: filePath, fullPage: true });
+    return { success: true, message: `📸 Screenshot saved: screenshots/${testNo}-fail.png` };
+  } catch (err) {
+    return { success: false, message: err.message };
+  }
+}
+
 module.exports = {
   navigate,
   fill,
@@ -214,4 +319,9 @@ module.exports = {
   clear,
   hover,
   press_key,
+  click_text,
+  assert_element_visible,
+  assert_table_has_data,
+  wait_for_page_load,
+  take_screenshot_on_fail,
 };

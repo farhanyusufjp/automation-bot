@@ -65,21 +65,93 @@ Edit file `.env` sesuai dengan website yang ingin kamu uji:
 BASE_URL=https://your-website.com
 USERNAME=your_username
 PASSWORD=your_password
-EXCEL_FILE=test_cases/test_cases.xlsx
+EXCEL_FILE=test_cases/TEST CASE - Prima Career (SAU).xlsx
 HEADLESS=false
+SHEET_NAME=
+SLOW_MO=500
 ```
 
 | Variabel      | Keterangan                                                              |
 |---------------|-------------------------------------------------------------------------|
-| `BASE_URL`    | URL utama website yang diuji. Digunakan jika kolom Value pada action `navigate` kosong. |
-| `USERNAME`    | Username untuk login. Gunakan di kolom Value pada action `fill`.        |
-| `PASSWORD`    | Password untuk login. Gunakan di kolom Value pada action `fill`.        |
-| `EXCEL_FILE`  | Path ke file Excel test case. Default: `test_cases/test_cases.xlsx`.   |
+| `BASE_URL`    | URL utama website yang diuji. Digunakan untuk login otomatis.          |
+| `USERNAME`    | Username untuk login.                                                   |
+| `PASSWORD`    | Password untuk login.                                                   |
+| `EXCEL_FILE`  | Path ke file Excel test case. Default: `test_cases/TEST CASE - Prima Career (SAU).xlsx`. |
 | `HEADLESS`    | `false` = tampilkan browser, `true` = jalankan di background (untuk CI). |
+| `SHEET_NAME`  | Nama sheet Excel yang ingin dibaca (kosong = sheet pertama).            |
+| `SLOW_MO`     | Delay antar aksi dalam ms. Berguna untuk debug visual (default: `500`). |
 
 ---
 
-## 📝 Cara Mengisi Excel Test Case
+## 📊 Format Excel yang Didukung
+
+Bot mendukung file Excel format **Prima Career** dengan kolom berikut (tidak perlu kolom `Action` / `Selector`):
+
+| Kolom | Header           | Keterangan                                             |
+|-------|------------------|--------------------------------------------------------|
+| A     | `No`             | Nomor test case: `TCE001`, `TCE002`, dst; atau angka  |
+| B     | `Function`       | Nama fitur/modul (mendukung merged cells)              |
+| C     | `Scenario`       | Deskripsi aksi dalam bahasa Indonesia                  |
+| D     | `Expected Result`| Hasil yang diharapkan                                  |
+| E     | `Actual Result`  | Dikosongkan (diisi bot nanti)                          |
+| F     | `Status`         | Success/Fail — hasil existing, bisa diabaikan          |
+| G     | `Notes`          | Catatan tambahan                                       |
+
+**Aturan parsing:**
+- Baris dengan `No` diawali `BRD` → **di-skip** (header grup BRD)
+- Baris kosong → **di-skip**
+- Baris dengan `No` diawali `TCE` atau berupa angka → **diproses**
+- Kolom `Function` yang berisi merged cells ditangani otomatis
+
+### Contoh Isi Excel
+
+| No     | Function                                    | Scenario                        | Expected Result                  |
+|--------|---------------------------------------------|---------------------------------|----------------------------------|
+| BRD 28 | Employer - Menu Configuration - Job Master  | (deskripsi BRD)                 | ...                              |
+| TCE001 | Configuration-Job Master-Job Title Master   | Cek valid data yang ditampilkan | Sistem menampilkan list data...  |
+| TCE002 |                                             | Cek valid hasil search          | Sistem menampilkan hasil search  |
+| TCE003 |                                             | Klik 'Search'                   | Sistem menampilkan hasil search  |
+| TCE004 |                                             | Klik 'Reset'                    | Sistem mereset inputan keyword   |
+| TCE005 |                                             | Klik 'Create New'               | Sistem menampilkan pop up        |
+
+---
+
+## 🧠 Cara Kerja Smart Parser
+
+Bot secara otomatis menerjemahkan teks kolom `Scenario` menjadi aksi Playwright menggunakan **keyword matching**, sehingga tidak perlu mengisi kolom `Action` dan `Selector` secara manual.
+
+### Tabel Keyword → Aksi
+
+| Pola Scenario                              | Aksi Playwright                                     |
+|--------------------------------------------|-----------------------------------------------------|
+| `Klik 'Create New'`                        | `click_text("Create New")` + assert modal muncul   |
+| `Klik 'Search'`                            | `click_text("Search")`                             |
+| `Klik 'Reset'`                             | `click_text("Reset")`                              |
+| `Klik 'Save'`                              | `click_text("Save")`                               |
+| `Klik 'Delete' ...`                        | `click_text("Delete")`                             |
+| `Klik 'Edit' ...`                          | `click_text("Edit")`                               |
+| `Klik '...' pada pop up`                   | `click_text(...)` di dalam modal                   |
+| `Cek valid data yang ditampilkan`          | `assert_table_has_data()`                          |
+| `Cek valid hasil search`                   | `assert_element_visible(table tbody tr, ...)`      |
+| `Cek validasi '...'`                       | `assert_element_visible(.validation-message, ...)`  |
+| `Cek upload file tidak sesuai format`      | `assert_element_visible(.error, ...)`              |
+| `Cek upload file yang sesuai`             | `assert_element_visible(.success, ...)`            |
+| `Cek pengisian '...' melebihi batas input` | `assert_element_visible(.validation-message, ...)`  |
+| `Buka halaman ...`                         | `navigate(url)`                                    |
+
+Setiap test case secara otomatis diakhiri dengan **screenshot**.
+
+### Scenario yang Ditandai MANUAL (Skip)
+
+Scenario berikut tidak bisa diotomasi dan akan ditandai sebagai `⚠️ MANUAL`:
+
+- `Cek fungsi drag and drop`
+- `Klik 'Drag'`
+- `Klik 'Zoom slider'`
+- `Klik 'Flip'`
+- `Klik 'Rotasi'`
+
+---
 
 File Excel harus memiliki sheet bernama **TestCases** dengan kolom-kolom berikut:
 
