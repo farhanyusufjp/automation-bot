@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Environment variables (berisi data sensitif)
+.env
+
+# Hasil screenshot dari bot
+screenshots/
+
+# Log file
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
