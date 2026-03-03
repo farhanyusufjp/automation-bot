@@ -1,0 +1,8 @@
+# Daftar URL yang akan di-test
+# Format: URL | Nama Halaman
+# URL bisa berupa full URL atau path relatif dari BASE_URL
+# Baris yang diawali # adalah komentar
+
+/job-title | Job Title Master
+/job-card | Job Card Approval
+/dashboard | Dashboard

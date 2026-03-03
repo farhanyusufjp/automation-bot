@@ -5,6 +5,7 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
+    "explore": "node src/explore.js",
     "test": "node src/index.js"
   },
   "dependencies": {

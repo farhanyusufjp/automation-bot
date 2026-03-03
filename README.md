@@ -286,18 +286,111 @@ Tambahkan step `wait` di Excel:
 ```
 automation-bot/
 ├── src/
-│   ├── index.js           → Entry point utama bot
+│   ├── index.js           → Entry point utama bot (Excel Mode)
+│   ├── explore.js         → Entry point Explore Mode
+│   ├── explorer.js        → Scanner elemen halaman (Explore Mode)
+│   ├── excelReport.js     → Generator Excel report (Explore Mode)
+│   ├── login.js           → Module login otomatis
 │   ├── excelReader.js     → Modul baca & parse test case dari Excel
 │   └── actions.js         → Semua fungsi aksi (click, fill, assert, dll)
 ├── test_cases/
 │   └── test_cases.xlsx    → File Excel test case (generate dengan generate-excel.js)
+├── results/               → Hasil report Excel Explore Mode (dibuat otomatis)
 ├── screenshots/           → Hasil screenshot (dibuat otomatis, tidak di-commit)
+├── urls.txt               → Daftar URL untuk Explore Mode
 ├── generate-excel.js      → Script untuk generate template Excel
 ├── .env.example           → Template environment variables
 ├── .gitignore
 ├── package.json
 └── README.md
 ```
+
+---
+
+## 🔍 Explore Mode
+
+Explore Mode memungkinkan bot **scan dan test otomatis semua elemen** di setiap halaman tanpa perlu menulis test case secara manual. Cukup daftarkan URL-nya, dan bot akan mengerjakan sisanya.
+
+### Cara Pakai Explore Mode
+
+```bash
+# 1. Isi urls.txt dengan halaman yang mau ditest
+# 2. Pastikan .env sudah diisi BASE_URL, USERNAME, PASSWORD
+# 3. Jalankan:
+npm run explore
+```
+
+### Format `urls.txt`
+
+```
+# Daftar URL yang akan di-test
+# Format: URL | Nama Halaman
+# URL bisa berupa full URL atau path relatif dari BASE_URL
+# Baris yang diawali # adalah komentar
+
+/job-title | Job Title Master
+/job-card | Job Card Approval
+/dashboard | Dashboard
+```
+
+### Apa yang Di-test Secara Otomatis?
+
+| Elemen | Test yang Dilakukan |
+|--------|---------------------|
+| `<table>` | Cek visible, cek ada data (tbody tr) |
+| `<button>` Create/Tambah | Klik → cek modal muncul → tutup |
+| `<button>` Delete/Hapus | Klik → cek dialog konfirmasi → batalkan |
+| `<button>` Edit | Klik → cek form edit muncul → tutup |
+| `<button>` Reset/Clear | Klik → cek form kembali kosong |
+| `<button>` Save/Simpan | Di-skip (tidak klik tanpa konteks) |
+| `<button>` Export/Download | Klik → cek response |
+| `<input type="text">` | Isi valid, isi karakter spesial, isi panjang |
+| `<select>` | Cek options, pilih option pertama & terakhir |
+| `<form>` | Submit kosong → cek pesan validasi |
+| `<a href>` | Skip external, tandai internal link |
+
+### Output Excel Report
+
+Report disimpan di folder `results/` dengan nama `test-report-[timestamp].xlsx`.
+
+**Sheet "Test Results"** — detail setiap elemen yang ditest:
+
+| No | URL | Nama Halaman | Elemen yang Ditest | Aksi | Expected | Actual | Status | Screenshot |
+|----|----|----|----|----|----|----|----|---|
+
+Warna status:
+- 🟢 **PASS** — background hijau muda
+- 🔴 **FAIL** — background merah muda (disertai path screenshot)
+- 🟡 **SKIP** — background kuning muda
+- ⚪ **MANUAL** — background abu-abu muda (perlu verifikasi manual)
+
+**Sheet "Summary"** — ringkasan keseluruhan per halaman:
+
+```
+AUTOMATION TEST REPORT
+Generated: [tanggal waktu]
+Base URL: [BASE_URL]
+
+Total Halaman Ditest : X
+Total Elemen Ditest  : X
+PASS                 : X  (X%)
+FAIL                 : X  (X%)
+...
+
+DETAIL PER HALAMAN:
+Halaman          | Total | PASS | FAIL | SKIP
+Job Title Master |  45   |  40  |   3  |   2
+```
+
+### Perbedaan Excel Mode vs Explore Mode
+
+| | Excel Mode | Explore Mode |
+|--|-----------|-------------|
+| Perintah | `npm start` | `npm run explore` |
+| Input | File Excel test case | File `urls.txt` |
+| Test | Ikut scenario Excel | Auto-discover semua elemen |
+| Output | `test_results.log` + `results/report.html` | `results/test-report-xxx.xlsx` |
+| Cocok untuk | Test formal/BRD | Quick check / smoke test |
 
 ---
 
